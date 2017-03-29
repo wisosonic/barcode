@@ -83,11 +83,11 @@ class DNS1D {
      * @param $h (int) Height of barcode in user units.
      * @param $color (string) Foreground color (in SVG format) for bar elements (background is transparent).
      * @return string SVG code.
-     * @protected
+     * @public
      */
-    protected function getBarcodeSVG($code, $type, $w = 2, $h = 30, $color = 'black') {
+    public function getBarcodeSVG($code, $type, $w = 2, $h = 30, $color = 'black') {
         if (!$this->store_path) {
-            $this->setStorPath(app('config')->get("barcode.store_path"));
+            $this->setStorPath(\Config::get("barcode.store_path"));
         }
         $this->setBarcode($code, $type);
         // replace table for special characters
@@ -122,29 +122,93 @@ class DNS1D {
      * @param $h (int) Height of a single bar element in pixels.
      * @param $color (string) Foreground color for bar elements (background is transparent).
      * @return string HTML code.
-     * @protected
+     * @public
      */
-    protected function getBarcodeHTML($code, $type, $w = 2, $h = 30, $color = 'black') {
+    public function getBarcodeHTML($code, $type, $w = 2, $h = 30, $color = 'black', $labels = false) {
         if (!$this->store_path) {
-            $this->setStorPath(app('config')->get("barcode.store_path"));
+            $this->setStorPath(\Config::get("barcode.store_path"));
         }
+
+	
+	
         $this->setBarcode($code, $type);
-        $html = '<div style="font-size:0;position:relative;">' . "\n";
-        $html = '<div style="font-size:0;position:relative;width:' . ($this->barcode_array['maxw'] * $w) . 'px;height:' . ($h) . 'px;">' . "\n";
+
+	$html = '<div id="container" style="height: ' . ($h + $fontSize) .'px; position: relative;">' . "\n";
+
+	$html .= '<div id="barcode" style="position: absolute">' . "\n";
+
+        
+        $html .= '<div style="font-size:0;position:relative;width:' . ( ($this->barcode_array['maxw']+12) * $w) . 'px;height:' . ($h) . 'px;">' . "\n";
+	
+	$html .= '<div style="background-color:white' .  ';width:' . (6*$w) . 'px; height:' . $h . 'px; position:absolute; left:0px;top:0px;">&nbsp;</div>' . "\n";
+
         // print bars
-        $x = 0;
+        $x = 6*$w;
         foreach ($this->barcode_array['bcode'] as $k => $v) {
             $bw = round(($v['w'] * $w), 3);
             $bh = round(($v['h'] * $h / $this->barcode_array['maxh']), 3);
             if ($v['t']) {
                 $y = round(($v['p'] * $h / $this->barcode_array['maxh']), 3);
                 // draw a vertical bar
-                $html .= '<div style="background-color:' . $color . ';width:' . $bw . 'px;height:' . $bh . 'px;position:absolute;left:' . $x . 'px;top:' . $y . 'px;">&nbsp;</div>' . "\n";
+                $html .= '<div style="background-color:' . $color . ';width:' . $bw . 'px; height:' . $bh . 'px; position:absolute; left:' . $x . 'px;top:' . $y . 'px;">&nbsp;</div>' . "\n";
             }
             $x += $bw;
         }
+        
+	$html .= '<div style="background-color:white' .  ';width:' . (6*$w) . 'px; height:' . $h . 'px; position:absolute; left:' . $x . 'px;top:0px;">&nbsp;</div>' . "\n";
         $html .= '</div>' . "\n";
-        return $html;
+	
+	$html .= '</div>' . "\n";
+
+	if ($labels and $type == "EAN13") {
+
+		$original = $code;
+		$systemCode1 = substr($original,0,1);
+		$systemCode2 = substr($original,1,1);
+		$manufCode = substr($original,2,5);
+		$productCode = substr($original,7,5);
+		$checksum = substr($original,12,1);
+		$fontSize = round(($w*5)) ;
+
+		$html .= '
+		<div id="code" style="position:absolute; 
+								z-index :10; 
+								left:' . 0*$w . 'px; 
+								width:' . 5*$w . 'px; 
+								background-color: transparent;
+								text-align:center;
+								top:' . ($h-10) .'px;
+								font-size:' . $fontSize . 'px;
+								">
+			<span style="display:inline-block; transform:scale(2,1);">' . $systemCode1 . '</span>
+		</div>
+		<div id="code" style="position:absolute; 
+								z-index :10; 
+								left:' . 9*$w . 'px; 
+								width:' . 42*$w . 'px; 
+								background-color: transparent;
+								text-align:center;
+								top:' . ($h-10) .'px;
+								font-size:' . $fontSize . 'px;
+								">
+			<span style="display:inline-block; transform:scale(2,1);">' . $systemCode2 . " " . $manufCode . '</span>
+		</div>
+
+		<div id="code" style="position:absolute; 
+								z-index :10; 
+								left:' . 56*$w . 'px; 
+								width:' . 42*$w . 'px; 
+								background-color: transparent;
+								text-align:center;
+								top:' . ($h-10) .'px;
+								font-size:' . $fontSize . 'px;
+								">
+			<span style="display:inline-block; transform:scale(2,1);">' . $productCode . " " . $checksum . '</span>
+		</div>';
+	}
+	$html .= '</div>' . "\n";
+
+	return $html;
     }
 
     /**
@@ -155,11 +219,11 @@ class DNS1D {
      * @param $h (int) Height of a single bar element in pixels.
      * @param $color (array) RGB (0-255) foreground color for bar elements (background is transparent).
      * @return image or false in case of error.
-     * @protected
+     * @public
      */
-    protected function getBarcodePNG($code, $type, $w = 2, $h = 30, $color = array(0, 0, 0)) {
+    public function getBarcodePNG($code, $type, $w = 2, $h = 30, $color = array(0, 0, 0)) {
         if (!$this->store_path) {
-            $this->setStorPath(app('config')->get("barcode.store_path"));
+            $this->setStorPath(\Config::get("barcode.store_path"));
         }
         $this->setBarcode($code, $type);
         // calculate image size
@@ -174,7 +238,7 @@ class DNS1D {
             $fgcol = imagecolorallocate($png, $color[0], $color[1], $color[2]);
         } elseif (extension_loaded('imagick')) {
             $imagick = true;
-            $bgcol = new \imagickpixel('rgb(255,255,255)');
+            $bgcol = new \imagickpixel('rgb(255,255,255');
             $fgcol = new \imagickpixel('rgb(' . $color[0] . ',' . $color[1] . ',' . $color[2] . ')');
             $png = new \Imagick();
             $png->newImage($width, $height, 'none', 'png');
@@ -216,10 +280,10 @@ class DNS1D {
 
     /**
      * Get the array representation of last generated barcode.
-     *
+     * 
      * @return array
     */
-    protected function getBarcodeArray()
+    public function getBarcodeArray()
     {
         return $this->barcode_array;
     }
@@ -232,11 +296,11 @@ class DNS1D {
      * @param $h (int) Height of a single bar element in pixels.
      * @param $color (array) RGB (0-255) foreground color for bar elements (background is transparent).
      * @return path or false in case of error.
-     * @protected
+     * @public
      */
-    protected function getBarcodePNGPath($code, $type, $w = 2, $h = 30, $color = array(0, 0, 0)) {
+    public function getBarcodePNGPath($code, $type, $w = 2, $h = 30, $color = array(0, 0, 0)) {
         if (!$this->store_path) {
-            $this->setStorPath(app('config')->get("barcode.store_path"));
+            $this->setStorPath(\Config::get("barcode.store_path"));
         }
         $this->setBarcode($code, $type);
         // calculate image size
@@ -300,9 +364,9 @@ class DNS1D {
      * @param $h (int) Height of a single bar element in pixels.
      * @param $color (array) RGB (0-255) foreground color for bar elements (background is transparent).
      * @return url or false in case of error.
-     * @protected
+     * @public
      */
-    protected function getBarcodePNGUri($code, $type, $w = 2, $h = 30, $color = array(0, 0, 0)) {
+    public function getBarcodePNGUri($code, $type, $w = 2, $h = 30, $color = array(0, 0, 0)) {
         return url($this->getBarcodePNGPath($code, $type, $w, $h, $color));
     }
 
@@ -311,7 +375,7 @@ class DNS1D {
      * @param $code (string) code to print
      * @param $type (string) type of barcode: <ul><li>C39 : CODE 39 - ANSI MH10.8M-1983 - USD-3 - 3 of 9.</li><li>C39+ : CODE 39 with checksum</li><li>C39E : CODE 39 EXTENDED</li><li>C39E+ : CODE 39 EXTENDED + CHECKSUM</li><li>C93 : CODE 93 - USS-93</li><li>S25 : Standard 2 of 5</li><li>S25+ : Standard 2 of 5 + CHECKSUM</li><li>I25 : Interleaved 2 of 5</li><li>I25+ : Interleaved 2 of 5 + CHECKSUM</li><li>C128 : CODE 128</li><li>C128A : CODE 128 A</li><li>C128B : CODE 128 B</li><li>C128C : CODE 128 C</li><li>EAN2 : 2-Digits UPC-Based Extention</li><li>EAN5 : 5-Digits UPC-Based Extention</li><li>EAN8 : EAN 8</li><li>EAN13 : EAN 13</li><li>UPCA : UPC-A</li><li>UPCE : UPC-E</li><li>MSI : MSI (Variation of Plessey code)</li><li>MSI+ : MSI + CHECKSUM (modulo 11)</li><li>POSTNET : POSTNET</li><li>PLANET : PLANET</li><li>RMS4CC : RMS4CC (Royal Mail 4-state Customer Code) - CBC (Customer Bar Code)</li><li>KIX : KIX (Klant index - Customer index)</li><li>IMB: Intelligent Mail Barcode - Onecode - USPS-B-3200</li><li>CODABAR : CODABAR</li><li>CODE11 : CODE 11</li><li>PHARMA : PHARMACODE</li><li>PHARMA2T : PHARMACODE TWO-TRACKS</li></ul>
      * @return array barcode array
-     * @protected
+     * @public
      */
     protected function setBarcode($code, $type) {
         switch (strtoupper($type)) {
@@ -1395,11 +1459,7 @@ class DNS1D {
         }
         $data_len = $len - 1;
         //Padding
-        if ($upce) {
-            $code = $this->upce2a($code);
-        } else {
-            $code = str_pad($code, $data_len, '0', STR_PAD_LEFT);
-        }
+        $code = str_pad($code, $data_len, '0', STR_PAD_LEFT);
         $code_len = strlen($code);
         // calculate check digit
         $sum_a = 0;
@@ -2374,86 +2434,9 @@ class DNS1D {
         return $path;
     }
 
-    protected function setStorPath($path) {
+    public function setStorPath($path) {
         $this->store_path = $path;
         return $this;
     }
 
-    /**
-     * Convert UPC-E to UPC-A
-     * @param $code (string) code to represent.
-     * @return string upc-a value of upc-e
-     * @protected
-     */
-    protected function upce2a($code) {
-        $manufacturer = '';
-        $itemNumber = '';
-
-        if (strlen($code) > 6) {
-            $code = substr($code, -6);
-        } else {
-            $code = str_pad($code, 6, '0', STR_PAD_LEFT);
-        }
-
-        // break digits
-        $digit1 = substr($code, 0, 1);
-        $digit2 = substr($code, 1, 1);
-        $digit3 = substr($code, 2, 1);
-        $digit4 = substr($code, 3, 1);
-        $digit5 = substr($code, 4, 1);
-        $digit6 = substr($code, 5, 1);
-
-        switch ($digit6) {
-            case '0':
-                $manufacturer = $digit1 . $digit2 . $digit6 . '00';
-                $itemNumber = '00' . $digit3 . $digit4 . $digit5;
-                break;
-            case '1':
-                $manufacturer = $digit1 . $digit2 . $digit6 . '00';
-                $itemNumber = '00' . $digit3 . $digit4 . $digit5;
-                break;
-            case '2':
-                $manufacturer = $digit1 . $digit2 . $digit6 . '00';
-                $itemNumber = '00' . $digit3 . $digit4 . $digit5;
-                break;
-            case '3':
-                $manufacturer = $digit1 . $digit2 . $digit3 . '00';
-                $itemNumber = '000' . $digit4 . $digit5;
-                break;
-            case '4':
-                $manufacturer = $digit1 . $digit2 . $digit3 . $digit4 . '0';
-                $itemNumber = '0000' . $digit5;
-                break;
-            default:
-                $manufacturer = $digit1 . $digit2 . $digit3 . $digit4 . $digit5;
-                $itemNumber = '0000' . $digit6;
-                break;
-        }
-
-        return '0' . $manufacturer . $itemNumber;
-    }
-
-	/**
-	 * Handle dynamic method calls.
-	 *
-	 * @param  string  $method
-	 * @param  array  $parameters
-	 * @return mixed
-	 */
-	public function __call($method, $parameters)
-	{
-		return $this->$method(...$parameters);
-	}
-
-	/**
-	 * Handle dynamic static method calls.
-	 *
-	 * @param  string  $method
-	 * @param  array  $parameters
-	 * @return mixed
-	 */
-	public static function __callStatic($method, $parameters)
-	{
-		return (new static)->$method(...$parameters);
-	}
 }
