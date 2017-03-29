@@ -129,7 +129,7 @@ class DNS1D {
             $this->setStorPath(\Config::get("barcode.store_path"));
         }
 
-	
+	$fontSize = round(($w*5)) ;
 	
         $this->setBarcode($code, $type);
 
