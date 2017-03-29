@@ -129,24 +129,34 @@ class DNS1D {
             $this->setStorPath(\Config::get("barcode.store_path"));
         }
 
-	$fontSize = round(($w*5)) ;
-	
         $this->setBarcode($code, $type);
 
-	$html = '<div id="container" style="height: ' . ($h + $fontSize) .'px; position: relative;">' . "\n";
-
+	$html = '<div id="container" style="height: ' . $h.'px; position: relative;">' . "\n";
+	
 	$html .= '<div id="barcode" style="position: absolute">' . "\n";
-
         
         $html .= '<div style="font-size:0;position:relative;width:' . ( ($this->barcode_array['maxw']+12) * $w) . 'px;height:' . ($h) . 'px;">' . "\n";
 	
-	$html .= '<div style="background-color:white' .  ';width:' . (6*$w) . 'px; height:' . $h . 'px; position:absolute; left:0px;top:0px;">&nbsp;</div>' . "\n";
+	if ($type=="EAN13" and $labels){
+		$original = $code;
+		$systemCode1 = substr($original,0,1);
+		$systemCode2 = substr($original,1,1);
+		$manufCode = substr($original,2,5);
+		$productCode = substr($original,7,5);
+		$checksum = substr($original,12,1);
+		$fontSize = round(($w*5)) ;
+		$reduceHeight = 0 ;	
+	}
+	$html .= '<div style="background-color:transparent' .  ';width:' . (6*$w) . 'px; height:' . $h . 'px; position:absolute; left:0px;top:0px;">&nbsp;</div>' . "\n";
 
         // print bars
         $x = 6*$w;
         foreach ($this->barcode_array['bcode'] as $k => $v) {
             $bw = round(($v['w'] * $w), 3);
             $bh = round(($v['h'] * $h / $this->barcode_array['maxh']), 3);
+	    if ($type=="EAN13" and $labels and ! in_array($k, array(0,1,2,28,29,30,56,57,58)) ) {
+		$bh = $bh - $fontSize ;
+	    }
             if ($v['t']) {
                 $y = round(($v['p'] * $h / $this->barcode_array['maxh']), 3);
                 // draw a vertical bar
@@ -155,52 +165,43 @@ class DNS1D {
             $x += $bw;
         }
         
-	$html .= '<div style="background-color:white' .  ';width:' . (6*$w) . 'px; height:' . $h . 'px; position:absolute; left:' . $x . 'px;top:0px;">&nbsp;</div>' . "\n";
+	$html .= '<div style="background-color:transparent' .  ';width:' . (6*$w) . 'px; height:' . $h . 'px; position:absolute; left:' . $x . 'px;top:0px;">&nbsp;</div>' . "\n";
         $html .= '</div>' . "\n";
 	
 	$html .= '</div>' . "\n";
 
-	if ($labels and $type == "EAN13") {
-
-		$original = $code;
-		$systemCode1 = substr($original,0,1);
-		$systemCode2 = substr($original,1,1);
-		$manufCode = substr($original,2,5);
-		$productCode = substr($original,7,5);
-		$checksum = substr($original,12,1);
-		$fontSize = round(($w*5)) ;
-
+	if ($type == "EAN13" and $labels) {
 		$html .= '
-		<div id="code" style="position:absolute; 
+		<div id="systemCode1" style="position:absolute; 
 								z-index :10; 
 								left:' . 0*$w . 'px; 
 								width:' . 5*$w . 'px; 
 								background-color: transparent;
 								text-align:center;
-								top:' . ($h-10) .'px;
+								top:' . ($h-$fontSize) .'px;
 								font-size:' . $fontSize . 'px;
 								">
 			<span style="display:inline-block; transform:scale(2,1);">' . $systemCode1 . '</span>
 		</div>
-		<div id="code" style="position:absolute; 
+		<div id="systemCode2" style="position:absolute; 
 								z-index :10; 
 								left:' . 9*$w . 'px; 
 								width:' . 42*$w . 'px; 
 								background-color: transparent;
 								text-align:center;
-								top:' . ($h-10) .'px;
+								top:' . ($h-$fontSize) .'px;
 								font-size:' . $fontSize . 'px;
 								">
 			<span style="display:inline-block; transform:scale(2,1);">' . $systemCode2 . " " . $manufCode . '</span>
 		</div>
 
-		<div id="code" style="position:absolute; 
+		<div id="productCode" style="position:absolute; 
 								z-index :10; 
 								left:' . 56*$w . 'px; 
 								width:' . 42*$w . 'px; 
 								background-color: transparent;
 								text-align:center;
-								top:' . ($h-10) .'px;
+								top:' . ($h-$fontSize) .'px;
 								font-size:' . $fontSize . 'px;
 								">
 			<span style="display:inline-block; transform:scale(2,1);">' . $productCode . " " . $checksum . '</span>
@@ -276,16 +277,6 @@ class DNS1D {
         $image = base64_encode($image);
         //$image = 'data:image/png;base64,' . base64_encode($image);
         return $image;
-    }
-
-    /**
-     * Get the array representation of last generated barcode.
-     * 
-     * @return array
-    */
-    public function getBarcodeArray()
-    {
-        return $this->barcode_array;
     }
 
     /**
